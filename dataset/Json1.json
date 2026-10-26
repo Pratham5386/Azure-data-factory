@@ -10,7 +10,7 @@
 		"typeProperties": {
 			"location": {
 				"type": "HttpServerLocation",
-				"relativeUrl": "Pratham5386/Azure-data-factory/blob/main/cdc.json"
+				"relativeUrl": "anshlambagit/AnshLambaYoutube/refs/heads/main/ADF_PRO/cdc.json"
 			}
 		},
 		"schema": {}
