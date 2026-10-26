@@ -1,0 +1,266 @@
+{
+	"name": "incremental_load",
+	"properties": {
+		"activities": [
+			{
+				"name": "last_updated",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "Json_dy_file",
+						"type": "DatasetReference",
+						"parameters": {
+							"cont": "source",
+							"fold": "cdc",
+							"file": "cdc.json"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "Copy data1",
+				"type": "Copy",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "csv_dy_file",
+						"type": "DatasetReference",
+						"parameters": {
+							"cont": "destination",
+							"fold": "copiedfiles",
+							"file": "drivers.csv"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "csv_dy_file",
+						"type": "DatasetReference",
+						"parameters": {
+							"cont": "source",
+							"fold": "csvs",
+							"file": "drivers.csv"
+						}
+					}
+				]
+			},
+			{
+				"name": "watermark_update",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Copying_newfiles",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"additionalColumns": [
+							{
+								"name": "cdc_timestamp",
+								"value": {
+									"value": "@utcNow()",
+									"type": "Expression"
+								}
+							}
+						],
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"sink": {
+						"type": "JsonSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "JsonWriteSettings"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "Json_dy_file",
+						"type": "DatasetReference",
+						"parameters": {
+							"cont": "source",
+							"fold": "cdc",
+							"file": "empty.json"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Json_dy_file",
+						"type": "DatasetReference",
+						"parameters": {
+							"cont": "source",
+							"fold": "cdc",
+							"file": "cdc.json"
+						}
+					}
+				]
+			},
+			{
+				"name": "Copying_newfiles",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "last_updated",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"modifiedDatetimeStart": {
+								"value": "@formatDateTime(activity('last_updated').output.value[0].cdc_timestamp,'yyyy-MM-ddTHH:mm:ss.fffZ')",
+								"type": "Expression"
+							},
+							"wildcardFileName": "*.csv",
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "csv_dy_fold",
+						"type": "DatasetReference",
+						"parameters": {
+							"cont": "source",
+							"fold": "csvs"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "csv_dy_fold",
+						"type": "DatasetReference",
+						"parameters": {
+							"cont": "destination",
+							"fold": "incremented_files"
+						}
+					}
+				]
+			}
+		],
+		"annotations": []
+	}
+}

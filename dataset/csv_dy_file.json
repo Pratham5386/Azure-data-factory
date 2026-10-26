@@ -1,0 +1,44 @@
+{
+	"name": "csv_dy_file",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureDataLakeStorage1",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"cont": {
+				"type": "string"
+			},
+			"fold": {
+				"type": "string"
+			},
+			"file": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().file",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().fold",
+					"type": "Expression"
+				},
+				"fileSystem": {
+					"value": "@dataset().cont",
+					"type": "Expression"
+				}
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	}
+}
